@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="board">
+	 <!-- 관리자(admin) 목록 조회 -->
+    <select id="adminList" resultType="com.example.cafe.answer.model.BoardDTO">
+        <include refid="paging_header" />
+        SELECT rownum, idx, title, contents, regdate, hit, writer, name,
+               (SELECT COUNT(*) FROM cf_reply WHERE board_idx = b.idx) cnt
+        FROM (
+            SELECT b.idx, b.title, b.contents, b.regdate, b.hit, b.writer, a.name
+            FROM cf_board b
+            JOIN cf_admin a ON b.writer = a.userid
+            UNION ALL
+            SELECT b.idx, b.title, b.contents, b.regdate, b.hit, b.writer, m.name
+            FROM cf_board b
+            JOIN cf_manager m ON b.writer = m.userid
+            UNION ALL
+            SELECT b.idx, b.title, b.contents, b.regdate, b.hit, b.writer, u.name
+            FROM cf_board b
+            JOIN cf_user u ON b.writer = u.userid
+        ) b
+        <choose>
+            <when test="search_option == 'all'">
+                WHERE name LIKE '%' || #{keyword} || '%' 
+                   OR contents LIKE '%' || #{keyword} || '%' 
+                   OR title LIKE '%' || #{keyword} || '%'
+            </when>
+            <otherwise>
+                WHERE ${search_option} LIKE '%' || #{keyword} || '%'
+            </otherwise>
+        </choose>
+        ORDER BY idx DESC, regdate DESC
+        <include refid="paging_footer" />
+    </select>
+    
+    
+    
+
+    <!-- 매니저(manager) 목록 조회 -->
+    <select id="managerList" resultType="com.example.cafe.answer.model.BoardDTO">
+        <include refid="paging_header" />
+        SELECT rownum, idx, title, contents, b.regdate, hit, name,
+        (SELECT COUNT(*) FROM cf_reply WHERE board_idx=b.idx) cnt
+        FROM cf_board b, cf_manager m
+        <choose>
+			<when test="search_option == 'all'">
+				where b.writer=m.userid
+					and (name like '%' || #{keyword} || '%' 
+					or contents like '%' || #{keyword} || '%' 
+					or title like '%' || #{keyword} || '%')
+			</when>
+			<otherwise>
+				where b.writer=m.userid
+				and ${search_option} like '%' || #{keyword} || '%'
+			</otherwise>
+		</choose>
+        ORDER BY idx DESC, regdate DESC
+        <include refid="paging_footer" />
+    </select>
+
+    <!-- 일반 사용자(user) 목록 조회 -->
+    <select id="userList" resultType="com.example.cafe.answer.model.BoardDTO">
+        <include refid="paging_header" />
+        SELECT rownum, idx, title, contents, b.regdate, hit, name,
+        (SELECT COUNT(*) FROM cf_reply WHERE board_idx=b.idx) cnt
+        FROM cf_board b, cf_user u
+        <choose>
+			<when test="search_option == 'all'">
+				where b.writer=u.userid
+					and (name like '%' || #{keyword} || '%' 
+					or contents like '%' || #{keyword} || '%' 
+					or title like '%' || #{keyword} || '%')
+			</when>
+			<otherwise>
+				where b.writer=u.userid
+				and ${search_option} like '%' || #{keyword} || '%'
+			</otherwise>
+		</choose>
+        ORDER BY idx DESC, regdate DESC
+        <include refid="paging_footer" />
+    </select>
+
+	<insert id="insert">
+		insert into cf_board(idx, title, contents,writer) 
+		values (cf_board_seq.nextval, #{title}, #{contents}, #{writer, jdbcType=VARCHAR})
+	</insert>
+	
+	<select id="adminDetail" resultType="com.example.cafe.answer.model.BoardDTO">
+		select idx, title, contents, b.regdate, hit, name, writer
+		from cf_board b, cf_admin a
+		where b.writer=a.userid and idx=#{idx}
+	</select>
+	
+	<select id="managerDetail" resultType="com.example.cafe.answer.model.BoardDTO">
+		select idx, title, contents, b.regdate, hit, name, writer
+		from cf_board b, cf_manager m
+		where b.writer=m.userid and idx=#{idx}
+	</select>
+	
+	<select id="userDetail" resultType="com.example.cafe.answer.model.BoardDTO">
+		select idx, title, contents, b.regdate, hit, name, writer
+		from cf_board b, cf_user u
+		where b.writer=u.userid and idx=#{idx}
+	</select>
+	
+	<update id="increase_hit">
+		update cf_board set hit=hit+1 where idx=#{idx}
+	</update>
+	
+	<update id="update">
+		update cf_board set title=#{title}, contents=#{contents} where idx=#{idx}
+	</update>
+	
+	
+	<delete id="delete">
+	    DELETE FROM cf_board WHERE idx=#{idx}
+	</delete>
+	
+    <select id="adminCount" resultType="int">
+	    SELECT COUNT(*)
+	    FROM (
+	        SELECT b.idx, b.title, b.contents, a.name
+	        FROM cf_board b
+	        JOIN cf_admin a ON b.writer = a.userid
+	        UNION ALL
+	        SELECT b.idx, b.title, b.contents, m.name
+	        FROM cf_board b
+	        JOIN cf_manager m ON b.writer = m.userid
+	        UNION ALL
+	        SELECT b.idx, b.title, b.contents, u.name
+	        FROM cf_board b
+	        JOIN cf_user u ON b.writer = u.userid
+	    ) T
+	    <choose>
+	        <when test="search_option == 'all'">
+	            WHERE T.name LIKE '%' || #{keyword} || '%' 
+	               OR T.contents LIKE '%' || #{keyword} || '%' 
+	               OR T.title LIKE '%' || #{keyword} || '%'
+	        </when>
+	        <otherwise>
+	            WHERE ${search_option} LIKE '%' || #{keyword} || '%'
+	        </otherwise>
+	    </choose>
+	</select>
+
+
+	
+	<select id="managerCount" resultType="int">
+		select count(*) from cf_board b, cf_manager m
+ 		<choose>
+			<when test="search_option == 'all'">
+				where b.writer=m.userid
+					and (name like '%' || #{keyword} || '%' 
+					or contents like '%' || #{keyword} || '%' 
+					or title like '%' || #{keyword} || '%')
+			</when>
+			<otherwise>
+				where b.writer=m.userid
+				and ${search_option} like '%' || #{keyword} || '%'
+			</otherwise>
+		</choose>
+	</select>
+	
+	<select id="userCount" resultType="int">
+		select count(*) from cf_board b, cf_user u
+        <choose>
+			<when test="search_option == 'all'">
+				where b.writer=u.userid
+					and (name like '%' || #{keyword} || '%' 
+					or contents like '%' || #{keyword} || '%' 
+					or title like '%' || #{keyword} || '%')
+			</when>
+			<otherwise>
+				where b.writer=u.userid
+				and ${search_option} like '%' || #{keyword} || '%'
+			</otherwise>
+		</choose>
+	</select>
+	
+	<select id="list_attach" resultType="String">
+		select file_name from attach where board_idx=#{board_idx} order by regdate
+	</select>
+	
+	<insert id="insert_attach">
+		insert into attach (file_name, board_idx) values (#{file_name}, cf_board_seq.currval)
+	</insert>
+	
+	<insert id="update_attach">
+		insert into attach (file_name, board_idx) values (#{file_name}, #{idx})
+	</insert>
+	
+	<delete id="delete_attach">
+		delete from attach where file_name=#{file_name}
+	</delete>
+	
+	
+	<sql id="paging_header">
+		select * 
+		from (
+			select rownum as rn, A.*
+			from (
+	</sql>
+	
+	<sql id="paging_footer">
+			) A
+		) where rn between #{start} and #{end}
+	</sql>
+</mapper>

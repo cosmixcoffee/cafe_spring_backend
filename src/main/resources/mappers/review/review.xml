@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="review">
+
+   <!-- ✅ 전체 리뷰 조회 (페이징 적용) -->
+    <select id="listAllReview" resultType="com.example.cafe.review.model.ReviewDTO">
+        SELECT * FROM (
+            SELECT A.*, rownum AS rn 
+            FROM (
+                SELECT rv_idx, cf_number, userid, rv_content, cf_point, rv_filename, w_date
+                FROM review 
+                WHERE cf_number = #{cf_number}
+                ORDER BY w_date DESC
+            ) A
+           ) WHERE rn BETWEEN #{start} AND #{end}
+            
+    </select>
+
+  <!-- ✅ 특정 사용자의 리뷰 조회 (페이징 적용) -->
+    <select id="listReview" resultType="com.example.cafe.review.model.ReviewDTO">
+        SELECT * FROM (
+            SELECT A.*, rownum AS rn 
+            FROM (
+                SELECT rv_idx, cf_number, userid, rv_content, cf_point, rv_filename, w_date
+                FROM review 
+                WHERE cf_number = #{cf_number} AND userid = #{userid}
+                ORDER BY w_date DESC
+            ) A
+           ) WHERE rn BETWEEN #{start} AND #{end}
+    </select>
+
+	<insert id="insertReview" parameterType="com.example.cafe.review.model.ReviewDTO">
+		INSERT INTO REVIEW (rv_idx, userid, cf_number,
+		rv_content, rv_filename, w_date, cf_point)
+		VALUES(review_seq.nextval,
+		#{userid},#{cf_number},#{rv_content},#{rv_filename, jdbcType=VARCHAR},#{w_date, jdbcType=TIMESTAMP},#{cf_point})
+	</insert>
+
+	<update id="updatePoint">
+		UPDATE cafe
+		SET CF_POINT = (
+		SELECT AVG(cf_point)
+		FROM review
+		WHERE cf_number = #{cf_number}
+		)
+		WHERE cf_number = #{cf_number}
+	</update>
+	
+	<update id="updateCount">
+		UPDATE cafe
+		SET cf_rv_count = (
+		SELECT COUNT(*)
+		FROM review
+		WHERE cf_number = #{cf_number}
+		)
+		WHERE cf_number = #{cf_number}
+	</update>
+
+	<delete id="deleteReview">
+		DELETE
+		FROM review
+		WHERE rv_idx = #{rv_idx}
+	</delete>
+	
+	<select id="countAllReviews" resultType="int">
+    	SELECT COUNT(*) FROM review WHERE cf_number = #{cf_number}
+	</select>
+	
+	<select id="getCafePoint" resultType="double">
+    	SELECT NVL(AVG(cf_point), 0) FROM review WHERE cf_number = #{cf_number}
+	</select>
+</mapper>

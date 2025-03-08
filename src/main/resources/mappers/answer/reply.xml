@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="reply">
+	<update id="update">
+		update cf_reply set reply_text=#{reply_text} where idx=#{idx}
+	</update>
+	
+	<delete id="delete">
+		delete from cf_reply where idx=#{idx}
+	</delete>
+	
+	<select id="detail" resultType="com.example.cafe.answer.model.ReplyDTO">
+		select * from cf_reply where idx=#{idx}
+	</select>
+	
+	<select id="count" resultType="int">
+		select count(*) from cf_reply where board_idx=#{board_idx}
+	</select>
+	
+	<insert id="insert">
+		insert into cf_reply (idx, board_idx, reply_text, replyer) values (cf_reply_seq.nextval, #{board_idx}, #{reply_text}, #{replyer})
+	</insert>
+	
+	
+	 <!-- ✅ 관리자(admin) - 모든 댓글 조회 -->
+    <select id="adminList" resultType="com.example.cafe.answer.model.ReplyDTO">
+        SELECT r.idx, r.board_idx, r.reply_text, r.replyer, u.name, r.regdate
+        FROM cf_reply r
+        LEFT JOIN cf_user u ON r.replyer = u.userid  -- ✅ 사용자 정보 조인
+        LEFT JOIN cf_manager m ON r.replyer = m.userid  -- ✅ 매니저 정보 조인
+        LEFT JOIN cf_admin a ON r.replyer = a.userid  -- ✅ 관리자 정보 조인
+        WHERE r.board_idx = #{board_idx}
+        ORDER BY r.idx DESC
+    </select>
+
+    <!-- ✅ 매니저(manager) - 본인이 작성한 댓글만 조회 -->
+    <select id="managerList" resultType="com.example.cafe.answer.model.ReplyDTO">
+        SELECT r.idx, r.board_idx, r.reply_text, r.replyer, u.name, r.regdate
+        FROM cf_reply r
+        LEFT JOIN cf_user u ON r.replyer = u.userid
+        LEFT JOIN cf_manager m ON r.replyer = m.userid
+        WHERE r.board_idx = #{board_idx} 
+        ORDER BY r.idx DESC
+    </select>
+
+    <!-- ✅ 일반 사용자(user) - 본인이 작성한 댓글만 조회 -->
+    <select id="userList" resultType="com.example.cafe.answer.model.ReplyDTO">
+        SELECT r.idx, r.board_idx, r.reply_text, r.replyer, u.name, r.regdate
+        FROM cf_reply r
+        LEFT JOIN cf_user u ON r.replyer = u.userid
+        WHERE r.board_idx = #{board_idx} 
+        ORDER BY r.idx DESC
+    </select>
+
+	
+	<sql id="paging_header">
+		select *
+		from (
+			select rownum as rn, A.*
+			from (		
+	</sql>
+	
+	<sql id="paging_footer">
+			) A
+		) where rn between #{start} and #{end}
+	</sql>
+</mapper>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="myFavorite">
+	<select id = "list_myFavorite" resultType = "com.example.cafe.myFavorite.model.MyFavoriteDTO">
+		SELECT TF.fav_idx, TF.cf_number, TF.userid, CF.cf_name 
+		FROM favor TF
+		INNER JOIN cafe CF
+		ON TF.cf_number = CF.cf_number
+		WHERE TF.userid = #{userid}
+		ORDER BY TF.fav_idx
+	</select>
+	
+	<insert id = "insert_myFavorite">
+		INSERT INTO favor (fav_idx, userid, cf_number) VALUES (favor_SEQ.NEXTVAL, #{userid}, #{cf_number})
+	</insert>
+	
+	<delete id = "delete_myFavorite">
+		DELETE FROM favor 
+		WHERE cf_number = #{cf_number} and userid = #{userid}
+	</delete>
+	<select id = "check_myFavorite" resultType = "Integer">
+		SELECT COUNT(*) 
+		FROM favor 
+		WHERE cf_number = #{cf_number} and userid = #{userid}
+	</select>
+	<select id="get_myFavorite" resultType = "Integer">
+		SELECT cf_number
+		FROM favor
+		WHERE userid = #{userid}
+	</select>
+</mapper>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="memo">
+	<select id="listAllMemo" resultType="com.example.cafe.memo.model.MemoDTO">
+		SELECT MT.*, CT.cf_name FROM memo MT
+		INNER JOIN cafe CT ON MT.cf_number = CT.cf_number
+		WHERE MT.userid = #{userid} ORDER BY memo_idx
+	</select>
+	<select id="listCfMemo" resultType="com.example.cafe.memo.model.MemoDTO">
+		SELECT MT.*,CT.cf_name FROM memo MT 
+		INNER JOIN cafe CT ON MT.cf_number = CT.cf_number
+		WHERE MT.userid = #{userid} AND MT.cf_number = #{cf_number}
+		ORDER BY memo_idx
+	</select>
+	<select id="detailMemo" resultType="com.example.cafe.memo.model.MemoDTO">
+		SELECT MT.*,CT.cf_name FROM memo MT 
+		INNER JOIN cafe CT ON MT.cf_number = CT.cf_number 
+		WHERE memo_idx = #{memo_idx} 
+	</select>
+	<delete id="deleteMemo">
+		DELETE FROM memo WHERE memo_idx = #{memo_idx}
+	</delete>
+	<insert id="insertMemo"> 
+		INSERT INTO memo (memo_idx, userid, cf_number, memo_title, memo_content, memo_file, w_date)
+		VALUES(memo_seq.nextval, #{userid},#{cf_number},#{memo_title},#{memo_content},#{memo_file, jdbcType=BLOB},#{w_date})
+	</insert>
+
+</mapper>

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cafesearch">
+<!-- 검색후 나오는 표 -->
+	<select id="list" resultType="com.example.cafe.search.model.CafeDTO">
+		SELECT * 
+		FROM (
+    		SELECT A.*, rownum AS rn
+    		FROM (
+        		SELECT cf_number, userid, cf_name, cf_code, cf_pcode, cf_adr1,cf_adr2, cf_tel, cf_content, cf_map, cf_point
+    			FROM cafe 
+    			ORDER BY cf_number ASC
+    		) A
+		)
+		WHERE rn BETWEEN #{start} AND #{end}
+		
+	</select>
+	
+	<!-- cafesearch.xml (검색 쿼리) -->
+	<!-- ✅ 최신 리뷰 개수 및 평점을 포함한 검색 쿼리 -->
+	<select id="search_list" resultType="com.example.cafe.search.model.CafeDTO">
+	    SELECT * FROM (
+	        SELECT A.*, ROWNUM rn
+	          FROM (
+	            SELECT * 
+	              FROM cafe
+	              <where>
+	                <!-- 1) 검색어가 존재할 때만 조건 추가 -->
+	                <if test="search != null and search != ''">
+	                  <!-- 2) searchkey 가 'all'일 때 -->
+	                  <if test="searchkey == 'all'">
+	                    AND ( cf_name    LIKE '%' || #{search} || '%'
+	                       OR cf_adr1 LIKE '%' || #{search} || '%'
+	                       OR cf_content LIKE '%' || #{search} || '%'
+	                       <!-- 필요하다면 더 추가 -->
+	                    )
+	                  </if>
+	                  
+	                  <!-- 3) searchkey 가 'ADDRESS_NAME'일 때 (기존 로직) -->
+	                  <if test="searchkey == 'ADDRESS_NAME'">
+	                    AND ( cf_name LIKE '%' || #{search} || '%'
+	                       OR cf_adr1 LIKE '%' || #{search} || '%'
+	                    )
+	                  </if>
+	                  
+	                  <!-- 4) searchkey 가 그 외일 때 -->
+	                  <if test="searchkey != 'ADDRESS_NAME' and searchkey != 'all'">
+	                    AND ${searchkey} LIKE '%' || #{search} || '%'
+	                  </if>
+	                </if>
+	              </where>
+	              ORDER BY cf_number ASC
+	          ) A
+	      )
+	    WHERE rn BETWEEN #{start} AND #{end}
+	</select>
+
+
+	
+	<!-- 조회수 -->
+	<select id="count" resultType="int">
+		SELECT COUNT(*) from cafe
+	</select>
+		
+	<!-- 검색 조건에 따라 count(*)만 구하는 쿼리 -->
+	<select id="search_count" resultType="int">
+	    SELECT count(*)
+	    FROM cafe
+	    <where>
+		    <if test="search != null and search != '' and searchkey != null and searchkey != ''">
+		        <choose>
+		            <!-- searchkey가 'all'일 경우 -->
+		            <when test="searchkey == 'all'">
+		                ( cf_name LIKE '%' || #{search} || '%'
+		                  OR cf_adr1 LIKE '%' || #{search} || '%'
+		                  OR cf_content LIKE '%' || #{search} || '%'
+		                )
+		            </when>
+		
+		            <!-- searchkey가 'ADDRESS_NAME'일 경우 -->
+		            <when test="searchkey == 'ADDRESS_NAME'">
+		                ( cf_name LIKE '%' || #{search} || '%'
+		                  OR cf_adr1 LIKE '%' || #{search} || '%'
+		                )
+		            </when>
+		
+		            <!-- 그 외 단일 컬럼 검색 -->
+		            <otherwise>
+		                ${searchkey} LIKE '%' || #{search} || '%'
+		            </otherwise>
+		        </choose>
+		    </if>
+		</where>
+
+	</select>
+	
+	<!--01/10 카페 상세페이지 아이디도 조건 추가, 페이지 수정용 -->
+	<select id="detail_cafe" parameterType="map" resultType="com.example.cafe.search.model.CafeDTO">
+	    SELECT * FROM cafe WHERE userid = #{userid} and cf_number = #{cf_number} 
+	</select>
+	
+	<!--카페 상세페이지 검색용 -->
+	<select id="detailCafe" parameterType="map" resultType="com.example.cafe.search.model.CafeDTO">
+	    SELECT * FROM cafe WHERE cf_number = #{cf_number} 
+	</select>
+	
+	
+	<!--카페 이미지 관련-->
+	
+	<select id="img_info" resultType="com.example.cafe.search.model.CafeImageDTO">
+	    SELECT mainfilename, subfilename1, subfilename2, subfilename3, subfilename4 FROM cf_image WHERE cf_number = #{cf_number}
+	</select>
+	
+	<select id="getImages" parameterType="int" resultType="com.example.cafe.search.model.CafeImageDTO">
+	    SELECT * FROM cf_image
+	    WHERE cf_number = #{cf_number}
+	</select>
+	
+	
+	<insert id="img_insert" parameterType="com.example.cafe.search.model.CafeImageDTO">
+	    INSERT INTO cf_image (img_idx, cf_number, mainfilename, subfilename1, subfilename2, subfilename3, subfilename4, img_date)
+	    VALUES (cf_img_seq.NEXTVAL, #{cf_number}, #{mainfilename}, 
+	            COALESCE(#{subfilename1}, ''), COALESCE(#{subfilename2}, ''), 
+	            COALESCE(#{subfilename3}, ''), COALESCE(#{subfilename4}, ''), SYSDATE)
+	</insert>
+		
+		<!-- 기존 이미지 개수 확인 -->
+	<select id="img_count" resultType="int">
+	    SELECT COUNT(*) FROM cf_image WHERE cf_number = #{cf_number}
+	</select>
+
+
+	<!-- 기존 이미지가 있으면 업데이트 -->
+	<update id="img_update" parameterType="com.example.cafe.search.model.CafeImageDTO">
+	    UPDATE cf_image
+	    SET         
+	    mainfilename = COALESCE(#{mainfilename, jdbcType=VARCHAR}, mainfilename),
+        subfilename1 = COALESCE(#{subfilename1, jdbcType=VARCHAR}, subfilename1),
+        subfilename2 = COALESCE(#{subfilename2, jdbcType=VARCHAR}, subfilename2),
+        subfilename3 = COALESCE(#{subfilename3, jdbcType=VARCHAR}, subfilename3),
+        subfilename4 = COALESCE(#{subfilename4, jdbcType=VARCHAR}, subfilename4),
+        img_date = SYSDATE
+	    WHERE cf_number = #{cf_number}
+	</update>
+	
+	<delete id="deleteImages">
+    	DELETE FROM cf_image WHERE cf_number = #{cf_number}
+	</delete>
+	
+	<!-- 카페정보 수정  -->
+	<update id="updateCafe">
+	    UPDATE cafe 
+	    SET
+	        cf_name = NVL(#{cf_name, jdbcType=VARCHAR}, cf_name),
+	        cf_code = NVL(#{cf_code, jdbcType=VARCHAR}, cf_code),
+	        cf_pcode = NVL(#{cf_pcode, jdbcType=VARCHAR}, cf_pcode),
+	        cf_adr1 = NVL(#{cf_adr1, jdbcType=VARCHAR}, cf_adr1),
+	        cf_adr2 = NVL(#{cf_adr2, jdbcType=VARCHAR}, cf_adr2),
+	        cf_tel = NVL(#{cf_tel, jdbcType=VARCHAR}, cf_tel),
+	        cf_content = NVL(#{cf_content, jdbcType=VARCHAR}, cf_content)
+	    WHERE cf_number = #{cf_number}
+	</update>
+	
+	<delete id="selectdelete" parameterType="int">
+    	DELETE FROM cafe WHERE cf_number = #{cf_number}
+	</delete>
+	
+</mapper>

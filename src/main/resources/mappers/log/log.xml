@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="log">
+    <!-- 관리자 로그인 -->
+    <select id="adminLogin" parameterType="com.example.cafe.log.model.CfAdminDTO" resultType="String">
+        SELECT name FROM cf_admin WHERE userid = #{userid} AND passwd = #{passwd}<!-- passwd = MYPACK.ENCRYPT(#{passwd}) -->
+    </select>
+    
+    <!-- 매니저 로그인 -->
+    <select id="managerLogin" parameterType="com.example.cafe.log.model.CfManagerDTO" resultType="String">
+        SELECT name FROM cf_manager WHERE userid = #{userid} AND passwd = #{passwd}
+    </select>
+    
+    <!-- 일반 사용자 로그인 -->
+    <select id="userLogin" parameterType="com.example.cafe.log.model.CfUserDTO" resultType="String">
+        SELECT name FROM cf_user WHERE userid = #{userid, jdbcType=VARCHAR} AND passwd = #{passwd, jdbcType=VARCHAR}
+    </select>
+    
+        <!-- 전체 아이디 존재 여부 체크 -->
+    <select id="IdExistCount" parameterType="string" resultType="int">
+        SELECT 
+            (SELECT COUNT(*) FROM cf_user WHERE userid = #{userid} AND userid NOT LIKE '%admin%') + 
+            (SELECT COUNT(*) FROM cf_manager WHERE userid = #{userid} AND userid NOT LIKE '%admin%') 
+        AS total
+        FROM dual
+    </select>
+    
+        <!-- 매니저 가입 -->
+    <insert id="managerJoin" parameterType="com.example.cafe.log.model.CfManagerDTO">
+        INSERT INTO cf_manager (userid, passwd, name, email, tel, au_lv, cf_name, cf_pcode, cf_adr1, cf_adr2, cf_tel)
+        VALUES (#{userid}, #{passwd}, #{name}, #{email}, #{tel}, #{au_lv}, #{cf_name}, #{cf_pcode},
+                #{cf_adr1},  COALESCE(#{cf_adr2}, '') || ' ', #{cf_tel})
+    </insert>
+    
+    <!-- 일반 사용자 가입 -->
+    <insert id="userJoin" parameterType="com.example.cafe.log.model.CfUserDTO">
+        INSERT INTO cf_user (userid, passwd, name, email, tel, au_lv)
+        VALUES (#{userid}, #{passwd}, #{name}, #{email}, #{tel}, #{au_lv})
+    </insert>
+    
+        <!-- 아이디 찾기 -->
+    <select id="findIds" parameterType="map" resultType="map">
+        SELECT userid,name, au_lv
+        FROM (
+            SELECT userid, name, au_lv
+            FROM cf_user 
+            WHERE name = #{name} AND tel = #{tel} AND email = #{email}
+            UNION ALL
+            SELECT userid, name, au_lv
+            FROM cf_manager 
+            WHERE name = #{name} AND tel = #{tel} AND EMAIL = #{email}
+        ) combined
+    </select> 
+    
+        <!-- 비밀번호 찾기 -->
+	<select id="findPasswds" resultType="map">
+	  SELECT userid, passwd, au_lv
+        FROM (
+            SELECT userid, passwd, au_lv
+            FROM cf_user 
+            WHERE userid = #{userid} AND name = #{name} AND tel = #{tel} AND email = #{email}
+            UNION ALL
+            SELECT userid, passwd, au_lv
+            FROM cf_manager 
+            WHERE userid = #{userid} AND name = #{name} AND tel = #{tel} AND email = #{email}
+        ) combined
+	</select>
+	
+	<update id="updateUserPassword">
+	    UPDATE 
+	    <trim prefixOverrides="," suffixOverrides=",">
+	        <if test="auLv == 2"> cf_user </if>
+	        <if test="auLv == 1"> cf_manager </if>
+	        <if test="auLv == 0"> cf_admin </if>
+	    </trim>
+	    SET passwd = #{passwd}
+	    WHERE userid = #{userid}
+	</update>
+
+		
+	
+	
+	<!--  CFManagerDTO 정보 조회  -->
+	<select id="getManagerInfo" parameterType="string" resultType="com.example.cafe.log.model.CfManagerDTO"> 
+		SELECT * FROM cf_manager
+		WHERE userid = #{userid} 
+	</select>
+	<!--  CFUserDTO 정보 조회  -->
+	<select id="getUserInfo" parameterType="string" resultType="com.example.cafe.log.model.CfUserDTO">
+		SELECT * FROM cf_user
+		WHERE userid = #{userid}
+	</select>
+	<!--  CFAdminDTO 정보 조회  -->
+	<select id="getAdminInfo" parameterType="string" resultType="com.example.cafe.log.model.CfAdminDTO">
+		SELECT * FROM cf_admin
+		WHERE userid = #{userid}
+	</select>
+    
+    
+   <!-- 기존 비밀번호 조회 -->
+    <select id="checkPasswd" parameterType="map" resultType="String">
+        <choose>
+        	<when test="user_au_lv == 0">
+                SELECT passwd FROM cf_admin WHERE userid = #{userid}
+            </when>
+            <when test="user_au_lv == 1">
+                SELECT passwd FROM cf_manager WHERE userid = #{userid}
+            </when>
+            <when test="user_au_lv == 2">
+                SELECT passwd FROM cf_user WHERE userid = #{userid}
+            </when>
+        </choose>
+    </select>
+    
+        <!-- 회원정보수정 -->
+	<update id="editMember" parameterType="map">
+	    <choose>
+	   		<when test="user_au_lv == 0">
+	            UPDATE cf_admin
+	            SET passwd = #{passwd}, 
+	                email = #{email}, 
+	                tel = #{tel}
+	            WHERE userid = #{userid}
+	        </when>
+	        <when test="user_au_lv == 1">
+	            UPDATE cf_manager
+	            SET passwd = #{passwd}, 
+	                email = #{email}, 
+	                tel = #{tel}
+	            WHERE userid = #{userid}
+	        </when>
+	        <when test="user_au_lv == 2">
+	            UPDATE cf_user
+	            SET passwd = #{passwd}, 
+	                email = #{email}, 
+	                tel = #{tel}
+	            WHERE userid = #{userid}
+	        </when>
+	    </choose>
+	</update>
+	    
+    
+    <!-- 카페 등록 여부 체크 -->
+	<select id="isCafeRegistered" parameterType="string" resultType="int">
+    	SELECT COUNT(*) FROM CAFE WHERE userid = #{userid}
+	</select>
+	    
+    <!-- 사업자코드 존재 여부 체크 -->
+    <select id="isCodeExist" parameterType="string" resultType="int">
+    	SELECT COUNT(*) FROM CAFE WHERE cf_code = #{cf_code} 
+    </select>
+    
+	<insert id="insertCafeInfo" parameterType="com.example.cafe.search.model.CafeDTO">
+	    INSERT INTO cafe (cf_number, userid, cf_name, cf_code, cf_pcode, cf_adr1, cf_adr2, cf_tel, cf_content, cf_map, cf_visit_num, cf_rv_count, cf_point)
+	    	VALUES (cafe_seq.nextval, #{userid},#{cf_name}, #{cf_code}, #{cf_pcode}, #{cf_adr1},  COALESCE(#{cf_adr2}, '') || ' ', #{cf_tel},
+	    			COALESCE(#{cf_content}, '') || ' ', '0', 0, 0, 0)
+	</insert>
+    
+    <select id="saveCafeNum" parameterType="String" resultType="int">
+		SELECT cf_number FROM cafe WHERE userid = #{userid}
+	</select>
+	
+	<select id="getUserLevel" parameterType="string" resultType="int">
+	    SELECT au_lv FROM cf_admin WHERE userid = #{userid}
+	    UNION ALL
+	    SELECT au_lv FROM cf_manager WHERE userid = #{userid}
+	    UNION ALL
+	    SELECT au_lv FROM cf_user WHERE userid = #{userid}
+	</select>
+
+
+    
+</mapper>
